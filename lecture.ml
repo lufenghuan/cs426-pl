@@ -809,11 +809,11 @@ let rec lookup x bintree =
      Empty -> false
    | Node(y, left, right) ->
        if x = y then 
-	 true 
+         true 
        else if x < y then 
-	 lookup x left 
+         lookup x left 
        else 
-	 lookup x right
+         lookup x right
 ;;
 
 lookup "whack!" bt;;
@@ -824,9 +824,9 @@ let rec insert x bintree =
      Empty -> Node(x, Empty, Empty)
    | Node(y, left, right) ->
        if x <= y then 
-	 Node(y, insert x left, right)
+         Node(y, insert x left, right)
        else 
-	 Node(y, left, insert x right)
+         Node(y, left, insert x right)
 ;;
 
 let goobt = insert "goober " bt;;
