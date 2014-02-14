@@ -16,6 +16,16 @@
   of mutation unless explicitly specified in the question.
 *)
 
+(* helpers *)
+let rec list_find p = function
+    | [] -> raise Not_found
+      | hd :: tl -> if p hd then hd else list_find p tl
+;;
+
+let rec list_contain x = function
+    | [] -> false
+      | h :: t -> compare x h = 0 || list_contain x t
+;;
 
 (* ----------------------------------------------------------------------------------------- *)
 (* Section 1 : The Game of Types                                                             *)
@@ -32,39 +42,55 @@
 *) 
 
 (* Give an expression which has the following type: int ref list *)
-let exp1 = ();; (* ANSWER *)
+let exp1 = [ref 1; ref 2; ref 3];; 
 
 (* Give an expression which has the following type: 'a list -> bool *)
-let exp2 = ();; (* ANSWER *)
+let exp2 = fun lst -> false;; 
 
 (* Give an expression which has the following type: ('a -> 'b) -> a -> 'b *)
-let exp3 = ();; (* ANSWER *)
+let exp3 = fun fn acc -> fn acc;; (* ANSWER *)
 
 (* Give an expression which has the following type: 'a list -> 'a list list -> 'a list *)
-let exp4 = ();; (* ANSWER *)
+let exp4 = fun lst lst_lst -> match lst_lst with
+                             | [] -> lst
+                             | h::t -> h @ lst
+;;
 
 (* Give an expression which has the following type: ('a -> 'b -> 'b) -> 'b -> 'a list -> 'b *)
-let exp5 = ();; (* ANSWER *)
+let exp5 = fun fn acc lst -> match lst with
+                             | [] -> acc
+                             | h :: t -> fn h acc
+;;
 
 (* Give an expression which has the following type: ('a -> 'a -> int) -> 'a list -> 'a list *)
-let exp6 = ();; (* ANSWER *)
+let exp6 = fun fn lst -> match lst with
+                           | [] -> []
+                           | h::t -> if (fn h h) > 0 then [h] else t
+;;
 
 (* Give an expression which has the following type:  ('a -> 'a -> 'b) -> ('c -> 'a) -> 'c -> 'c -> 'b *)
-let exp7 = ();; (* ANSWER *)
+let exp7 = fun fn1 fn2 c1 c2 -> fn1 (fn2 c1) (fn2 c2);;
 
 (* Give an expression which has the following type: unit -> 'a  *)
 (* Hint: Trick question. Try staring at methods in Pervasives for a bit *)
-let exp8 = ();; (* ANSWER *)
+let exp8 = fun () -> raise (Failure "It is tricky!");;
 
 (* Give an expression which has the following type: ('a -> 'b) -> 'b -> 'a option -> 'b *)
-let exp9 = ();; (* ANSWER *)
+let exp9 = fun fn b some_a -> match some_a with 
+                              | Some a -> fn a
+                              | None -> b
+;;
+
 
 type ('a, 'b) sometype = Foo of 'a | Bar of 'b ;;
 
 (* Give an expression which has the following type:
    ('a * 'b) list -> ('a -> 'b -> 'c) -> ('d, 'c) sometype list 
 *)
-let exp10 = ();; (* ANSWER *)
+let exp10 = fun lst fn -> match lst with 
+                          | [] -> []
+                          | (h1, h2) :: t -> (Bar (fn h1 h2)) :: []
+;;
 
 (* -------------------------------------------------------------------------------------------------- *)
 (* Section 2 : Making Modules                                                                         *)
