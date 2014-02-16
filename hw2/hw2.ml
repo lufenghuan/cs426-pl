@@ -17,6 +17,8 @@
 *)
 
 (* helpers *)
+let (@:) f x = f x;;
+
 let rec list_find p = function
     | [] -> raise Not_found
       | hd :: tl -> if p hd then hd else list_find p tl
@@ -26,6 +28,64 @@ let rec list_contain x = function
     | [] -> false
       | h :: t -> compare x h = 0 || list_contain x t
 ;;
+
+
+let list_length lst =
+   let rec lst_length_helper lst len = 
+        match lst with
+          | [] -> len
+          | a::l -> lst_length_helper l (len + 1) 
+    in
+    lst_length_helper lst 0
+;;
+
+(* flatten list of list *)
+let rec list_flatten lst_lst = 
+    match lst_lst with
+      | [] -> []
+      | hd :: tl -> hd @ list_flatten tl
+;;
+
+(* reverse list*)
+let list_rev lst = 
+  let rec rev lst rev_lst = 
+    match lst with
+      | [] -> rev_lst
+      | hd :: tl -> rev tl (hd :: rev_lst)
+  in
+  rev lst []
+;;
+
+let list_map f lst = 
+    let rec map acc = function
+      | [] -> acc
+      | hd :: tl -> map ( (f hd) :: acc ) tl
+   in
+   list_rev ( map [] lst)
+;;
+
+let rec list_fold_left f acc lst =
+  match lst with
+    |[] -> acc
+    | h::t -> list_fold_left f (f acc h) t
+;;
+
+
+let list_group_by lst group_fn cmp_fn =
+  let sorted = List.sort cmp_fn lst in
+  let rec aux sorted_lst prev acc tmp = 
+    match sorted_lst with
+    | [] -> if tmp = [] then acc else (List.rev tmp) :: acc
+    | h::t ->  if (group_fn prev) = (group_fn h) then
+                  aux t h acc (h::tmp)
+              else
+                 aux t h ((List.rev tmp) :: acc) [h]
+  in
+  match sorted with 
+  | [] -> []
+  | h::t -> List.rev (aux t h [] [h])
+;;
+
 
 (* ----------------------------------------------------------------------------------------- *)
 (* Section 1 : The Game of Types                                                             *)
@@ -125,13 +185,23 @@ let exp10 = fun lst fn -> match lst with
 
 module type CFSETTYPE =
   sig
-      (* ANSWER *)
+    type 'a set
+    val create    : ('a -> bool) -> 'a set
+    val member    : 'a set -> 'a -> bool
+    val union     : 'a set -> 'a set -> 'a set
+    val intersect : 'a set -> 'a set -> 'a set
+    val exclude   : 'a set -> 'a -> 'a set
   end
 ;;
 
 module CFSet : CFSETTYPE =
   struct
-      (* ANSWER *)         
+    type 'a set = 'a -> bool
+    let create predicate = predicate 
+    let member predicate x = predicate x 
+    let union predicate1 predicate2 a = (predicate1 a) || (predicate2 a)
+    let intersect predicate1 predicate2 a = (predicate1 a) && (predicate2 a)
+    let exclude predicate x a= (predicate a) && (a <> x)
   end
 ;;
 
@@ -197,9 +267,48 @@ represents the tree:
       
       [10 Points]
 *)
-
-let rec decode_tree encoded_tree = () (* ANSWER *) ;;
-
+(*
+let rec decode_tree encoded_tree =
+  let rec aux encode =
+    match encode with
+    | [] -> (Empty, [])
+    | (v, num) :: t ->
+        if num = 0 then (Node(v, []), t)
+        else
+          let (node, code) = aux encode in
+          if num = 1 then
+            (Node(v, [node]), code)
+          else 
+            let (node2, code2) = aux code in
+            (Node(v, [node;node2]), code2)
+  in
+  let (tree, _) = aux encode_tree in
+  tree
+;;
+*)
+let decode_tree encoded_tree = 
+  (* aux return (tree_node, unprocessed_encode) pair *)
+  let rec aux encode =
+    match encode with
+    | [] -> raise (Failure "It is tricky!")
+    | (v, num) :: t ->
+        if num = 0 then (Node(v, []), t)
+        else
+          (* helper function to loop from 0 to n-1, return (tree and
+           * unprocessed encode), each iteration call aux to build
+           * substree of the head of unprocess encode as a root *)
+          let rec loop i n node unprocessed =
+            if i = n then (node, unprocessed)
+            else
+              let (child, unprocess) = aux unprocessed in
+              let Node(value, lst) = node in
+              loop (i+1) n (Node(v, lst @ [child])) unprocess 
+          in
+          loop 0 num (Node(v, [])) t
+  in
+  let (tree, _) = aux encoded_tree in
+  tree
+;;
 (*
 # decode_tree  [('a',2);('b',2);('c',0);('d',0);('e',1);('f',1);('g',0)] ;;
 - : char tree =
@@ -224,8 +333,10 @@ Node ("A",
 
       [5 Points]
 *)
-
-let rec encode_tree tree = () (* ANSWER *) ;;
+let rec encode_tree  tree = 
+  let Node(value, children) = tree in
+  (value, list_length children) :: (list_flatten (list_map encode_tree children))
+;;
     
 (*
 # encode_tree (Node ('a',
@@ -253,7 +364,10 @@ let rec encode_tree tree = () (* ANSWER *) ;;
       [5 Points]
 *)
 
-let rec map_tree fn tree = () (* ANSWER *) ;;
+let rec map_tree fn tree = 
+  let Node(value, children) = tree in
+  Node(fn value, list_map (map_tree fn) children)
+;;
 
 (*
 # map_tree (fun x -> Char.code x - Char.code 'a') (Node ('a',
@@ -284,7 +398,11 @@ Node ('A',
       [10 Points]
 *)
 
-let rec fold_tree_postorder fn init tree = () (* ANSWER *) ;;
+let rec fold_tree_postorder fn init tree = 
+  let Node(value, children) = tree in
+  let acc = list_fold_left (fold_tree_postorder fn) init children in 
+  fn acc tree
+;;
 
 (*
 # fold_tree_postorder (function res -> function Node(a,_) -> res ^ (String.make 1 a)) "" 
@@ -323,7 +441,42 @@ type ('a, 'b) binary_relation = ('a * 'b) list ;;
       [5 Points]
 *) 
 
-let rec is_symmetric rel = () (* ANSWER *) ;;
+(* 
+   comparator used to sort given rel in increasing in first element,
+   and decreasing in second element. 
+   [(1,4);(1,2);(1,3)] => [(1,4);(1,3);(1,2)] 
+*)
+let cmp_by_fst t1 t2 = 
+  match t1, t2 with
+  | (fst1,snd1), (fst2, snd2) -> 
+      if fst1 > fst2 then 1
+      else if fst1 = fst2 then 
+        compare snd2 snd1
+      else -1
+;;
+
+let cmp_by_snd t1 t2 = 
+  match t1, t2 with
+  | (fst1,snd1), (fst2, snd2) -> 
+      if snd1 > snd2 then 1
+      else if snd1 = snd2 then 
+        compare fst2 fst1
+      else -1
+;;
+
+(* 
+   [(1, 4); (1, 3); (1, 2); (2, 3); (2, 1); (3, 2); (3, 1); (4, 1)] 
+   [(4, 1); (3, 1); (2, 1); (3, 2); (1, 2); (2, 3); (1, 3); (1, 4)] 
+ *)
+let is_symmetric rel = 
+  let sorted_rel = List.sort cmp_by_fst rel in
+  let sorted_rel_2 = List.sort cmp_by_snd rel in
+  List.fold_left2 (
+    fun acc (fst1, snd1) (fst2, snd2) ->
+      acc && (fst1 = snd2) && (snd1 = fst2) 
+    )
+    true sorted_rel sorted_rel_2
+;;
 
 (*
 # is_symmetric [(1,4);(1,2);(1,3);(3,2);(2,3);(4,1);(2,1);(3,1)] ;;
@@ -341,7 +494,41 @@ let rec is_symmetric rel = () (* ANSWER *) ;;
       [10 Points]
 *)
 
-let rec is_transitive rel = () (* ANSWER *) ;;
+let rel_cmp t1 t2 = 
+  match t1, t2 with
+  | (fst1,snd1), (fst2, snd2) -> 
+      if fst1 > fst2 then 1
+      else if fst1 = fst2 then 
+        compare snd1 snd2
+      else -1
+;;
+
+
+let is_transitive rel = 
+  let sort_rel = List.sort cmp rel in
+  let group_rel = list_group_by sort_rel (fun (a,b) -> a) rel_cmp in
+  (* put into (key, group). e.g. [(1, [(1,2);(1,3)]); (2,[(2,2);(2,3)])]*)
+  let group_rel_with_key = List.map (fun a -> (fst(List.hd a), a) ) group_rel in
+  let find_group x = snd @: List.find (fun (a, _) -> a = x) group_rel_with_key in
+  let rec is_subset g1 g2 = match g1, g2 with
+    | [], [] -> true
+    | [], h::t -> false
+    | h::t, [] -> true
+    | (_, h1)::t1, (_, h2)::t2 -> 
+        if h1 = h2 then is_subset t1 t2 
+        else if h1 < h2 then is_subset t1 g2
+        else false
+  in
+  List.for_all (fun (a, b) ->
+                  try
+                    let g1 = find_group a in
+                    let g2 = find_group b in 
+                    is_subset g1 g2 
+                  with Not_found -> true
+                )
+               sort_rel
+;;
+        
 
 (*
 # is_transitive [(1,2);(1,3);(2,3);(4,4);(1,4);(4,3);(2,4);(4,2);(2,2)] ;;
@@ -373,14 +560,20 @@ let rec is_transitive rel = () (* ANSWER *) ;;
   Given any function f as an argument, create a function that returns a
   data structure consisting of f and its cache
 *)  
-let new_cached_fun f = () (* ANSWER *)
+let new_cached_fun f = (f, []) ;; 
 
 (*
   Write a function that takes the above function-cache data structure,
   applies an argument to it (using the cache if possible) and returns
   the result 
 *)
-let apply_fun_with_cache cached_fn x = () (* ANSWER *)
+let apply_fun_with_cache cached_fn x = 
+  match cached_fn with
+  | (f, lst) -> 
+      try 
+        snd @: List.find (fun (k, _) -> k = x) lst 
+      with Not_found -> f x 
+;;
 
 (*
   The following function makes a cached version for f that looks
@@ -444,8 +637,16 @@ cf 4;;
   elements from the list. Invoking the function after all the elements are exhausted, should return None.
 *)
 
-(* 'a list -> (() -> 'a option) *)
-let create_list_iterator lst = () (* ANSWER *) ;; 
+(* 'a list -> unit -> 'a option *)
+let create_list_iterator lst = 
+  let lst_ref = ref lst in
+  let aux l= 
+    match !l with
+    | [] -> None
+    | h::t -> l := t; Some h
+  in
+  fun () -> aux lst_ref 
+;;
 
 (*
 # let iter = create_list_iterator [3;2;1] ;;
@@ -470,8 +671,13 @@ val iter : unit -> int option = <fun>
   arithmetic progression - i.e. an iterator over the infinite sequence (a, a + d, a + 2d ..... )
 *)
 
-(* int -> int -> (() -> int option) *)
-let create_ap_iterator a d = () (* ANSWER *) ;;
+(* int -> int -> unit -> int option *)
+let create_ap_iterator a d = 
+  let value = ref a in
+  fun () -> let old_value = !value in 
+            value := (!value) + d ;
+            Some old_value
+;;
 
 (*
 # let iter = create_ap_iterator 2 5 ;;
