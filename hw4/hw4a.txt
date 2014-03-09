@@ -1,0 +1,102 @@
+600.426 - Programming Languages
+JHU Spring 2014
+Homework 4 Part 1 (40 points)
+
+--------------------------------------------------------------------------------------------------
+HEADER: PLEASE FILL THIS IN
+--------------------------------------------------------------------------------------------------
+
+Name                  :
+List of team Members  :
+List of discussants   :
+
+--------------------------------------------------------------------------------------------------
+Operational Semantics (Proof Trees) (10 points)
+--------------------------------------------------------------------------------------------------
+1. Construct a proof of evaluation for each of the following; you may
+   refer to your solutions by their letter in subsequent parts:
+
+  a. (Function x -> x + 1) 0
+  b. (Function f -> Function x -> f (f x)) (Function x -> x + 1)
+  c. (Function f -> Function x -> f (f x)) (Function x -> x + 1) 0
+
+--------------------------------------------------------------------------------------------------
+Operational Equivalence (10 points)
+--------------------------------------------------------------------------------------------------
+
+2. For each of the following Fb expressions, indicate whether
+   operational equivalence holds. If it does not, show some context
+   that evaluates differently dependent upon which of the two
+   expressions you use. (Remember: it only takes one of the infinitely
+   many contexts to make the two expressions operationally
+   inequivalent)
+
+  e1 and e2 are arbitrary expressions; x and y are variables.
+
+  a. (Function x -> x) e1 =~ e1
+  b. (Function x -> Function y -> y) e1 e2 =~ e2
+  c. (Function x -> y) =~ (Function y -> x)
+  d. If x Then True Else False =~ x
+  e. e1 + x =~ x + e1
+
+--------------------------------------------------------------------------------------------------
+Operational Semantics (Choose-your-own ruleset) (20 points)
+--------------------------------------------------------------------------------------------------
+
+3. Streams are one name for necessarily infinite lists. In this
+   question, you will be writing operational semantics for
+   them.
+
+  The grammar of Fb with streams is:
+
+    e ::= ... | Stream e e | Cons e e | First e | Rest e
+
+    v ::= ... | Stream v e
+
+  Write the rule for the Stream value. It will need to store a value
+  and an expression: the value is the first element in the stream; the
+  expression, when evaluated, produces the rest of the Stream.
+
+  Write a rule for Cons: "Cons e e" produces a new stream whose
+  first element is the evaluation of Cons's first argument, and the
+  rest of the stream is the evaluation of the second argument.
+
+  Write a rule for First: "First e" takes apart the stream resulting
+  from evaluating its argument, yielding the first element in the
+  stream.
+
+  Write a rule for Rest: "Rest e" takes apart the stream resulting
+  from evaluating its argument, producing a stream without the first
+  element.
+
+  Examples:
+
+    The infinite stream of all ones:
+
+      Let Rec ones _ = Stream 1 (ones 0) In
+      ones 0;;
+
+    The infinite stream of the positive integers:
+
+      Let Rec countUp n = Stream n (countUp (n + 1)) In
+      countUp 1;;
+
+    The third element of some stream "someStream":
+
+      Let someStream = ... In 
+      First (Rest (Rest someStream));;
+
+    A function which extracts the nth element of a stream:
+
+      Let Rec nth stream = Function n ->
+        If n = 0
+          Then First stream
+          Else nth (Rest stream) (n - 1) In
+      nth;;
+
+    With "countUp" as defined above, take a stream of positive
+    integers and make it a stream of non-negative integers:
+
+      Let Rec countUp n = ... In
+      Let pos = countUp 1 In
+      nonNeg = Cons 0 pos;;
