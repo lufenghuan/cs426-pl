@@ -6,7 +6,7 @@ Homework 4 Part 1 (40 points)
 HEADER: PLEASE FILL THIS IN
 --------------------------------------------------------------------------------------------------
 
-Name                  :
+Name                  : Fenghuan Lu
 List of team Members  :
 List of discussants   :
 
@@ -17,8 +17,53 @@ Operational Semantics (Proof Trees) (10 points)
    refer to your solutions by their letter in subsequent parts:
 
   a. (Function x -> x + 1) 0
+    
+    0 => 0, 1 => 1
+    --------------------------
+    (Function x [0/x] -> x [0/x] + 1) => 0 + 1 => 1
+    ---------------------------
+    (Function x -> x +1) [0/x]
+    ---------------------------
+    (Function x -> x + 1) 0 => 1
+
   b. (Function f -> Function x -> f (f x)) (Function x -> x + 1)
+
+    x => x, 1 => 1
+    ----------
+    x+1 => x+1, 1 =>1
+    ------------------
+    ((x+1) + 1) => x + 2
+    -----------------------
+    Function x-> ((x+1) + 1)
+    --------------------------------------------
+    Function x -> (Function x[(x+1)/x] -> x + 1)
+    ------------------------------------------
+    Function x -> (Function x -> x + 1) (x+1) 
+    ----------------------------------------------------------- 
+    Function x -> f[Function x -> x + 1/f] (f[(Function x-> x + 1)/f] x) 
+    ----------------------------------------------------------
+    (Function f [(Function x -> x + 1) / f] -> Function x -> f (f x) )
+    -----------------------------------------------------------
+    (Function f -> Function x -> f (f x)) (Function x -> x + 1) => Function x -> x + 2
+
+
+
   c. (Function f -> Function x -> f (f x)) (Function x -> x + 1) 0
+
+
+    0 => 0, 2 => 2
+    --------
+    0 + 2 => 2
+    ---------
+    x[0/x] + 2 
+    -------------------------
+    (Function x[0/x] -> x + 2
+    -------------------------
+    (Function x -> x + 2) 0
+    --------------------------
+    (Function f -> Function x -> f (f x) ) (Function x -> x +1) => Function x -> x + 2 (from 1.a), 0 => 0
+    --------------------------------------------------------------
+    (Function f -> Function x -> f (f x)) (Function x -> x + 1) 0 => 2
 
 --------------------------------------------------------------------------------------------------
 Operational Equivalence (10 points)
@@ -34,11 +79,39 @@ Operational Equivalence (10 points)
   e1 and e2 are arbitrary expressions; x and y are variables.
 
   a. (Function x -> x) e1 =~ e1
-  b. (Function x -> Function y -> y) e1 e2 =~ e2
-  c. (Function x -> y) =~ (Function y -> x)
-  d. If x Then True Else False =~ x
-  e. e1 + x =~ x + e1
+  Hold. e1 sub x:
 
+  e1 => e1
+  --------------------------
+  Function x[x/e1] -> x 
+  -----------------------------
+  (Function x -> x) e1 => e1
+
+
+  b. (Function x -> Function y -> y) e1 e2 =~ e2
+  Holds. 
+  (Function x -> Function y -> y) e1 e2 =~ (Function y -> y) e2 =~ e2
+
+  c. (Function x -> y) =~ (Function y -> x)
+
+  Not hold.
+  (Function x -> Function y -> x) 1 2 => 1
+  (Function x -> Function x -> y) 1 2 => not closed
+
+  
+  d. If x Then True Else False =~ x
+  Not hold.
+  when x = 1
+  x => 1
+  (If x Then True Else False) cannot be evaluated.
+
+
+  e. e1 + x =~ x + e1
+  Hold.
+  + implies left and right part is integer, thus e1 => v
+  v + x =~ x + v
+
+  (Function x
 --------------------------------------------------------------------------------------------------
 Operational Semantics (Choose-your-own ruleset) (20 points)
 --------------------------------------------------------------------------------------------------
@@ -100,3 +173,30 @@ Operational Semantics (Choose-your-own ruleset) (20 points)
       Let Rec countUp n = ... In
       Let pos = countUp 1 In
       nonNeg = Cons 0 pos;;
+
+  
+  Stream:
+  e1 => v, e2 => Stream e3 e4
+  -------------------------------
+  Stream e1 e2 => (v, Stream e3 e4) 
+
+  Con:
+  e1 => v
+  -------------------------------
+  Cons e1 e2 => Stream v e2
+
+
+  First:
+  e1 => v
+  ------------------------------
+  e => Stream e1 e2
+  -----------------------------
+  First e => v
+
+  Rest:
+  
+  e2 => Stream e3 e4
+  ----------------------
+  e => Stream e1 e2
+  -----------------------
+  Rest e => Stream e3 e4
