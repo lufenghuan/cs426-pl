@@ -448,7 +448,7 @@ Objects and Records (12 points)
                   inc =
                     Let ctrState = Ref 0 In
                     Let aux = Function ctrState -> Let i = !ctrSate In ctrStaet := i +1; i in
-                    aux ctrState
+                    Function _ -> aux ctrState
             }
 
    d. In what circumstances might you prefer to use mixins over
