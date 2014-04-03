@@ -1,0 +1,458 @@
+600.426 - Programming Languages
+JHU Spring 2014
+Homework 4 Part 2 (60 points)
+
+--------------------------------------------------------------------------------------------------
+HEADER: PLEASE FILL THIS IN
+--------------------------------------------------------------------------------------------------
+
+Name                  : Fenghuan Lu
+List of team Members  :
+List of discussants   :
+
+--------------------------------------------------------------------------------------------------
+Operational Equivalence (20 points)
+--------------------------------------------------------------------------------------------------
+
+1. For each of the following expressions, indicate whether operational
+   equivalence holds in the language specified. If it does not, show
+   some context that evaluates differently dependent upon which of the
+   two expressions you use. (Remember: it only takes one of the
+   infinitely many contexts to make the two expressions operationally
+   inequivalent)
+
+   e1 and e2 are arbitrary expressions; x and y are variables.
+
+   Assume that semicolon is encoded as in section 4.1.1 of the book.
+
+   FbS: for this section, e1 and e2 are FbS expressions and contexts may
+   contain FbS expressions (Ref, !, and :=, for example, are allowed).
+
+   a. e1 ~= e1; e1
+      Not equivalent. Since the e1 can have side effict. e.g.
+      e1 = Let count = Ref 0 In count := !count + 1
+
+   b. e1 + e2 =~ e2 + e1
+      Not equivalent. 
+      Assmue
+        e1 = < !x, {x |-> 0}>
+        e2 = < x:= !x +1; !x, {x |-> 0}>
+        e1 + e2 = 1
+        e2 + e1 = 2
+
+   c. e1 ; 0 0 =~ 0 0
+      Not equivalent.
+      If e1 contains side effect, then the contex of left and right is not the same.
+
+   d. x := y =~ x := y ; x := y
+      Equilalent. The right side assign y to x twich, which should be equivalent to assign once. 
+
+   e. x := y =~ y
+      Not equivalent. 
+      The context of left and right is not the same. The left changes where the x point to, but the right does not.
+
+   f. Let x = y In !x + !y =~ !y + !y
+      Equivalent.  x and y point to the same content, thus !x and !y is the same.  
+
+   FbX: for this section, e1 and e2 are FbX expressions and contexts may
+   contain FbX expressions (Raise, Try-With, and #exn, for example, are
+   allowed).
+
+   g. e1 ~= e1 ; e1
+      Equiavalent. Since in FbX there is only exception that change the order of execuation, then execute 
+      e1 twice will raise the same exception (if exception happens) and return the same result. 
+
+   h. e1 + e2 =~ e2 + e1
+      Not equiavalent. If both e1 and e2 throws exception, e.g.
+      try raise(Return 1) + raise(Return 2) with Return n -> n
+      e1 = raise(Return 1)
+      e2 = raise(Return 2)
+
+   i. e1 ; 0 0 =~ 0 0
+      Equiavalent. No matter what exeption e1 has, the ";" throw e1 away and will not affect "0 0"
+
+--------------------------------------------------------------------------------------------------
+Operational Semantics (Proof Trees) (8 points)
+--------------------------------------------------------------------------------------------------
+
+2. Construct a proof of evaluation for the following FbX expression:
+
+   Try (Try (Raise #Exn2 0) With #Exn1 n -> n - 1) With #Exn2 n -> n + 1 
+
+   Equals to 
+      Try e With #Exn2 n -> n + 1, 
+      e = Try(Raise #Exn2 0) With #Exn1 n -> n -1 => (Raise #Exn2 0) (Try rule)
+  
+   Equals to Try(Raise #Exn2 0) With #Exn2 n -> n +1 
+      Try (Raise #Exn2 0) With #Exn2 n -> n +1 => (n+1) [0/n] => 1 (Try Catch rule)
+
+
+
+--------------------------------------------------------------------------------------------------
+Translation and Encoding (Part 1: 20 points)
+--------------------------------------------------------------------------------------------------
+
+3. Consider a simplified version of FbS where there is only one cell
+   (FbS-). The grammar of FbS- and some examples to get an intuition
+   follow:
+
+   The grammar of FbS- includes two new expression forms:
+
+      e ::= ... | Get | Put e
+
+   The following are some example FbS- expressions followed by their
+   expected output and the contents of the cell after their evaluation:
+
+   (Assume semicolon and While-Do are encoded as in section 4.1.1 of the
+   book.)
+
+     True
+       => (True, 0)
+
+     Get
+       => (0, 0)
+
+     Put False; True
+       => (True, False)
+
+     Put False
+       => (0, False)
+
+     Put 7; While Not Get = 1 Do Put (Get - 1); False
+       => (False, 1)
+
+     Let Rec summate x =
+       If x = 0
+       Then Get
+       Else (Put (Get + x) ; summate (x - 1))
+     In (Put 0 ; summate 5)
+       => (15, 15)
+
+     Let withState = Function state -> Function f ->
+       Let savedState = Get In
+         Put state ;
+         Let ret = f 0 In
+           Put savedState ;
+           ret
+     In Put 9; withState 5 (Function x -> Get + 1)
+       => (6, 9)
+
+     Put 4 ;
+     (If Get = 4
+     Then
+       (Put (Get + 1))
+     Else
+       (Put (Get + 2)))
+     ; False
+       => (False, 5)
+
+   FbS- differes from FbS in a few ways: there is no need for "Ref"
+   operator (assume that the cell is always in scope and starts out
+   containing the value "0") or for cell names, and assignment and
+   dereference become unary and nullary operations, respectively. In
+   this assignment, you will be asked to encode parts of FbS- in Fb with
+   pairs (FbP).
+
+   Recall that FbP has three new expression forms and one new value form.
+
+     e ::= ... | (e, e) | Left e | Right e
+     v ::= ... | (v, v)
+
+   Section 5.2.3 of the book defines a translation from FbOB to FbSR;
+   here we will define a translation from FbS- to FbP.
+
+   We will represent values in this language as pairs in FbP, the Right
+   side representing the state of the cell and the Left side
+   representing the actual value. For example, "(0, 1)" represents the
+   value "0" when the cell contains the value "1". Expressions are
+   represented as functions returning pairs, whose input is the state in
+   which they are run.
+
+   We use [| e |] to indicate the translation of terms from FbS- to FbP.
+
+   To ensure the correct behavior of Get before any Puts have occurred,
+   we need a slightly different translation for top-level expressions
+   than for internal ones:
+
+     TopLevel( e ) = [| e |] 0
+
+   We define some of these operations; fill in the others such that the
+   examples evaluate correctly.
+
+   [| e1 + e2 |] =
+     Function s0 ->
+       Let v1 = [| e1 |] s0 In
+       Let v2 = [| e2 |] (Right v1) In
+       (Left v1 + Left v2, Right v2)
+
+   [| Function x -> e |] =
+     Function s0 -> (Function x -> Function s1 -> [| e |] s1, s0)
+
+   [| v |] (where v is not a function) =
+     Function s0 -> (v, s0)
+
+   [| e1 e2 |] =
+     Function s0 ->
+       Let v1 = [| e1 |] s0 In
+       Let v2 = [| e2 |] (Right v1) In
+       ((Left v1) (Left v2)) (Right v2)
+
+   [| Let Rec f x = e1 In e2 |] =
+     Function s0 ->
+       Let Rec f x = [| e1 |] In [| e2 |] s0
+
+   [| Put e1 |] =
+     Function s0 ->
+       Let v1 = [| e1 |] s0 In
+       (0, v1)
+
+   a. [| Get |] = Function s0 -> (s0, s0)
+
+   b. [| Not e1 |] = Function s0 ->
+                        Let v1 = [| e1 |] s0 In
+                        (Not (Left v1), Right v2)
+
+   c. [| If e1 Then e2 Else e3 |] = Function s0 ->
+                                      Let v1 = [| e1 |] s0 In
+                                      If (Left v1) Then [| e2 |] (Right v1)
+                                      Else [| e3 |] (Right v1)
+
+   Examples (note how [| |] differs from TopLevel( )):
+
+     [| True |]
+       => Function s0 -> (True, s0)
+
+     TopLevel( True )
+       => (True, 0)
+
+     [| Get |]
+       => Function s0 -> (s0, s0)
+
+     TopLevel( Get )
+       => (0, 0)
+
+     [| Put False; True |] =
+       => v
+       where v =~ Function s0 -> (True, False)
+
+     TopLevelTranslate( Put False; True )
+       => (True, False)
+
+   Put always evaluates to zero but changes the state. Let us consider a
+   similar operation, Put', that evaluates to the value written to the
+   state.
+
+   Examples:
+
+     Put' 5
+       => (5, 5)
+
+     (Put' 6) + 1
+       => (7, 6)
+
+   How would you translate Put' from FbS- to FbP
+
+   d. [| Put' e1 |] = Function s0 ->
+                        Let v1 = [| e1 |] s0 In
+                        (Left v1, Right v1)
+
+
+
+   How would you encode Put' in FbS-? (That is, imagine that Put' is a
+   macro in FbS- written in terms of other FbS- expressions, simliar to
+   how Let is a macro over Fb.)
+
+   e. Put' e1 def= Put e1; Get
+
+   For each of the following, provide an e1 such that the FbS-
+   expression given evaluates to True:
+
+   f. (These two should be straightforward)
+
+      1. e1 ; True
+         e1 =~ True
+      2. e1
+         e1 =~ True
+
+   g. e1 ; Get
+      e1 =~ Put True
+
+   h. e1 ; Get 0
+      e1 =~ Put (Function v -> v = 0)
+
+   i. e1 ;
+      (If Get 0
+       Then False
+       Else (If Not (Get 1)
+             Then False
+             Else (If Get 2
+                   Then False
+                   Else True)))
+
+      (That is to say, "Get 0" is False, "Get 1" is True, and "Get 2" is
+      False.)
+      e1 =~ Function v -> If v = 0 Then False Else(If v = 1 Then True Else (If v = 2 Then False Else True))
+
+   j. If (e1 + Get) = 0
+      Then Get = 3
+      Else False
+
+      e1 =~ Put 3; -3
+--------------------------------------------------------------------------------------------------
+Translation and Encoding (Part 2: 5 points, extra credit)
+--------------------------------------------------------------------------------------------------
+
+   -- This part is extra credit: you are not required to do it for full
+   -- credit on the assignment; you may skip to the next part.
+
+4. Write a translation function [| |] from FbS to FbS-. Your translation
+   may be more permissive than the FbS semantics but must be faithful:
+
+   That is to say, if e => v in FbS, then [| e |] => v' in FbS- where v'
+   is, in some sense, equivalent v (this is not operational equivalence,
+   since we are operating over two different languages), but if e =/> in
+   FbS, then [| e |] is unconstrained.
+
+   It need not be the case that if [| e |] => v' in FbS- then e => v in
+   FbS.
+
+   (Hints:
+     You will need some way of representing cell names; how about
+     integers?
+
+     You will need some way to get the value out of a cell and some way
+     to put a value into a cell; how would you represent a map in Fb?
+
+     You will need some way of remembering which cell names have been
+     created by a Ref expression; how about a counter?
+
+     You will need somewhere to store such a counter; how about in a
+     cell that programmers are not expected to interact with?)
+
+   a. [| Ref e |] = ?
+      (**ANSWER**)
+   b. [| e := e' |] = ?
+      (**ANSWER**)
+   c. [| ! e |] = ?
+      (**ANSWER**)
+   d. Give an example FbS expression, e, that gets stuck but whose
+      corresponding [| e |] does not, or explain why this cannot be the
+      case in your translation.
+      (**ANSWER**)
+
+--------------------------------------------------------------------------------------------------
+Objects and Records (12 points)
+--------------------------------------------------------------------------------------------------
+
+5. Recall the object encoding in FbSR from section 5.1. In this problem,
+   you will be asked to understand a variant of FbR which adds _record
+   extension_ (FbR+) and the corresponding stateful language FbSR+; you
+   will also be asked to encode an OO concept called _mixins_ in FbSR+.
+
+   FbR+ adds one new expression form to FbR
+
+     e ::= ... | e += { l = e }
+
+   where l is a field label. Note that although the syntactic construct to the
+   right of += looks like a record, it is only allowed to have one
+   field. Here are some examples of this construct in use:
+
+     1 += {b = 0}
+       =/>
+
+     {a = 1} += {b = 0}
+       => {a = 1 ; b = 0}
+
+     {a = 1} += {b = 0} += {c = False}
+       => {a = 1 ; b = 0 ; c = False}
+
+     ((Function x -> {a = x ; b = x}) 5) += {c = 0}
+       => {a = 5 ; b = 5 ; c = 0}
+
+     {a = 0 ; b = 0} += {a = 1}
+       => {a = 1 ; b = 0}
+
+   These examples illustrate some key points:
+     * Record extension gets stuck when its left argument is not a
+       record.
+     * Record extensions can chain (in terms of parsing, it associates
+       to the left.
+     * Record extension can override fields.
+
+   a. In the color point inheritance example (section 5.1.5), show how
+      you could use record extension to avoid explicitly repeating the
+      fields and methods of the superclass:
+
+      Let pointClass = ... In
+      Let colorPointClass = Function _ ->
+        (**ANSWER**)
+        Let super = pointClass {} In 
+        super += { color = (*color code*)}
+              += { magnitude = (*magnitude code*)}
+              += {brightness = (*brightness code*)}
+      In ...
+
+   b. In OOP, inheritance is one way to avoid duplication by sharing
+      common code between related objects (or classes); another way is
+      called _mixins_. A mixin can be thought of as a function taking an
+      object as input and producing a new, related object with more
+      fields and/or more methods as output. Using record extension,
+      write a mixin to produce an object with a brightness method that
+      depends on its magnitude and color. The code provided should
+      evaluate.
+
+      Let point2 = {
+        x = Ref 4;
+        y = Ref 3;
+      } In
+      Let mag2MixIn = Function obj ->
+        obj += {magnitude = Function this -> Function _ ->
+                 !(this.x) + !(this.y)} In
+      Let point3 = {
+        x = Ref 4;
+        y = Ref 3;
+        z = Ref 1
+      } In
+      Let mag3MixIn = Function obj ->
+        obj += {magnitude = Function this -> Function _ ->
+                 !(this.x) + !(this.y) + !(this.z)} In
+      Let colorMixIn = Function color -> Function obj ->
+        obj += {color = Ref color} In
+
+      Let brightnessMixIn = (**ANSWER**) 
+        obj += {brightness = FUnction this -> Function _ -> (*compute brightness..*)}
+      In
+
+      Let cm2point = colorMixIn (mag2MixIn point2) In
+      Let cm3point = colorMixIn (mag3MixIn point3) In
+      Let bpoint2 = brightnessMixIn cm2point In
+      Let bpoint3 = brightnessMixIn cm3point In
+      (bpoint2 <- brightness ; bpoint3 <- brightness)
+
+   c. Sometimes, a mixin might want to have its own private state; one
+      possible reason for this is to avoid interfering with the object's
+      fields. Change the following counter mixin so that it adds no
+      fields to the object and only one method, but otherwise behaves
+      identically.
+
+      Let counterMixIn = Function obj ->
+        obj += {ctrState = Ref 0}
+            += {inc = Function this -> Function _ ->
+                  Let i = !(this.ctrState) In
+                  (this.ctrState := i + 1 ; i)}
+      In ...
+
+      Let privateCounterMixIn = (**ANSWER**)
+        Function obj ->
+          obj += {
+                  inc =
+                    Let ctrState = Ref 0 In
+                    Let aux = Function ctrState -> Let i = !ctrSate In ctrStaet := i +1; i in
+                    aux ctrState
+            }
+
+   d. In what circumstances might you prefer to use mixins over
+      inheritance?
+      (**ANSWER**)
+      1. To deal with multiple inheritance. 
+      2. To add functionality to an exsiting classes which do not show any logical commonality, say, mixin get color into Car, House, Shoes.
